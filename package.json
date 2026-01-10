@@ -1,6 +1,6 @@
 {
     "name": "@electrovir/local-storage-client",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "An interface for storing JSON values into the LocalStorage API with type safety.",
     "keywords": [
         "localstorage",

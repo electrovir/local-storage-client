@@ -2,9 +2,9 @@
 
 An interface for storing values into the LocalStorage API with type safety. Note that only JSON compatible data can be stored.
 
-Note that some browsers aggressively clear LocalStorage so this should only be used for ephemeral data storage.
+Note that some browsers aggressively clear LocalStorage so this should only be used for ephemeral data storage. If you need more permanent storage, use [local-db-client](https://www.npmjs.com/package/local-db-client) instead.
 
-Reference docs: http://electrovir.github.io/local-storage-client
+Reference docs: https://electrovir.github.io/local-storage-client
 
 ## Instal
 
