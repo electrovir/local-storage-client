@@ -3,9 +3,13 @@ import {
     mapObject,
     mapObjectValues,
     wrapInTry,
+    type MaybePromise,
     type PartialWithUndefined,
+    type RequiredAndNotNull,
 } from '@augment-vir/common';
 import {assertValidShape, checkValidShape, type Shape} from 'object-shape-tester';
+import {type Constructor} from 'type-fest';
+import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
 
 /**
  * Base type for the shapes type parameter in {@link LocalStorageClient}.
@@ -38,6 +42,16 @@ export type LocalStorageClientGet<Shapes extends BaseLocalStorageClientShapes> =
     [Key in keyof Shapes]: (
         options?: LocalStorageClientGetOptions | undefined,
     ) => Shapes[Key]['runtimeType'] | undefined;
+};
+/**
+ * Type for `LocalStorageClient.listen`.
+ *
+ * @category Internal
+ */
+export type LocalStorageClientListen<Shapes extends BaseLocalStorageClientShapes> = {
+    [Key in keyof Shapes]: (
+        callback: (value: Shapes[Key]['runtimeType'] | undefined) => MaybePromise<void>,
+    ) => () => void;
 };
 /**
  * Type for `LocalStorageClient.set`.
@@ -74,6 +88,10 @@ export type LocalStorageClientOptions = {
     storeName: string;
 };
 
+class LocalStorageClientAllValuesEvent extends defineTypedCustomEvent<any>()(
+    'local-storage-client-all-values-event',
+) {}
+
 /**
  * An interface for storing values into the LocalStorage API with type safety. Note that only JSON
  * compatible data can be stored.
@@ -81,15 +99,49 @@ export type LocalStorageClientOptions = {
  * @category Main
  */
 export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageClientShapes>> {
+    /** Internal listen target used for `.listen()`. */
+    private listenTarget: ListenTarget<any> = new ListenTarget<LocalStorageClientAllValuesEvent>();
+    private keyEvents: Record<keyof Shapes, Constructor<CustomEvent>>;
+
+    /**
+     * The type for all values. Cannot be accessed as a value at runtime, only meant to be used as a
+     * type.
+     */
+    public get AllValuesType(): LocalStorageClientAllValues<Shapes> {
+        throw new Error('Cannot use AllValuesType as a runtime value. It is a type only.');
+    }
+
+    /**
+     * The type for each value. Cannot be accessed as a value at runtime, only meant to be used as a
+     * type.
+     */
+    public get ValueType(): RequiredAndNotNull<LocalStorageClientAllValues<Shapes>> {
+        throw new Error('Cannot use ValueType as a runtime value. It is a type only.');
+    }
+
     constructor(
         protected readonly shapes: Readonly<Shapes>,
         protected readonly options: Readonly<PartialWithUndefined<LocalStorageClientOptions>> = {},
     ) {
         this.storeName = options.storeName || 'local-storage-client';
 
+        this.keyEvents = mapObjectValues(shapes, (key) => {
+            return class extends defineTypedCustomEvent<any>()(
+                `local-storage-client-${String(key)}-event`,
+            ) {};
+        });
+
         this.get = mapObjectValues(this.shapes, (key) => {
             return (options: LocalStorageClientGetOptions | undefined = {}) => {
                 return this.getAllValues(options)[key];
+            };
+        });
+
+        this.listen = mapObjectValues(this.shapes, (key) => {
+            return (callback: (value: any) => MaybePromise<void>) => {
+                return this.listenTarget.listen(this.keyEvents[key], async (event) => {
+                    await callback(event.detail);
+                });
             };
         });
 
@@ -105,6 +157,11 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
                 allValues[key] = newValue;
 
                 globalThis.localStorage.setItem(this.storeName, JSON.stringify(allValues));
+                this.listenTarget.dispatch(
+                    new LocalStorageClientAllValuesEvent({detail: allValues}),
+                );
+                // eslint-disable-next-line sonarjs/new-operator-misuse
+                this.listenTarget.dispatch(new this.keyEvents[key]({detail: newValue}));
                 return newValue;
             };
         });
@@ -115,6 +172,11 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
                 delete allValues[key];
 
                 globalThis.localStorage.setItem(this.storeName, JSON.stringify(allValues));
+                this.listenTarget.dispatch(
+                    new LocalStorageClientAllValuesEvent({detail: allValues}),
+                );
+                // eslint-disable-next-line sonarjs/new-operator-misuse
+                this.listenTarget.dispatch(new this.keyEvents[key]({detail: undefined}));
             };
         });
     }
@@ -177,6 +239,25 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
         );
     }
 
+    /**
+     * Listen to `.set` calls.
+     *
+     * @returns A callback to remove the attached listener.
+     */
+    public listenToAllValues(
+        callback: (allValues: LocalStorageClientAllValues<Shapes>) => MaybePromise<void>,
+    ) {
+        return this.listenTarget.listen(LocalStorageClientAllValuesEvent, async (event) => {
+            await callback(event.detail);
+        });
+    }
+
+    /**
+     * Listen to changes on the specific key. The callback's parameter will be `undefined` if the
+     * value has been deleted.
+     */
+    public readonly listen: LocalStorageClientListen<Shapes>;
+
     /** Gets a specific value by key. This will return `undefined` if the */
     public readonly get: LocalStorageClientGet<Shapes>;
     /**
@@ -191,5 +272,10 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
     /** Clear all values. */
     public clear() {
         globalThis.localStorage.removeItem(this.storeName);
+    }
+
+    /** Cleanup the client and free-up resources. */
+    public destroy() {
+        this.listenTarget.destroy();
     }
 }

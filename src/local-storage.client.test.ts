@@ -1,5 +1,5 @@
 import {assert} from '@augment-vir/assert';
-import {randomString} from '@augment-vir/common';
+import {getObjectTypedKeys, randomString, type Values} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {defineShape} from 'object-shape-tester';
 import {LocalStorageClient} from './local-storage.client.js';
@@ -27,6 +27,13 @@ describe(LocalStorageClient.name, () => {
         client.clear();
         return client;
     }
+
+    it('blocks type property access at runtime', () => {
+        const client = new LocalStorageClient(testShapes);
+
+        assert.throws(() => client.AllValuesType);
+        assert.throws(() => client.ValueType);
+    });
 
     describe('constructor', () => {
         it('uses default store name when not provided', () => {
@@ -373,6 +380,80 @@ describe(LocalStorageClient.name, () => {
             const result = client.getAllValues();
 
             assert.deepEquals(result.objectValue, {name: 'Test', age: 20, extraKey: 'extra'});
+        });
+    });
+
+    describe('listenToAllValues', () => {
+        it('attaches an all values listener', () => {
+            const client = createTestClient();
+            const values: (typeof client.AllValuesType)[] = [];
+
+            const removeListener = client.listenToAllValues((value) => {
+                values.push(value);
+            });
+
+            client.set.arrayValue(['hi']);
+            client.set.numberValue(42);
+
+            removeListener();
+
+            client.set.booleanValue(false);
+
+            assert.deepEquals(values, [
+                {
+                    arrayValue: [
+                        'hi',
+                    ],
+                },
+                {
+                    arrayValue: [
+                        'hi',
+                    ],
+                    numberValue: 42,
+                },
+            ]);
+        });
+    });
+
+    describe('listen', () => {
+        it('attaches a listener', () => {
+            const client = createTestClient();
+            const values: Values<typeof client.AllValuesType>[] = [];
+
+            const removeListeners = getObjectTypedKeys(testShapes).map((key) => {
+                return client.listen[key]((value) => {
+                    values.push(value);
+                });
+            });
+
+            client.set.arrayValue(['hi']);
+            client.set.numberValue(42);
+
+            removeListeners.forEach((removeListener) => {
+                removeListener();
+            });
+
+            client.set.booleanValue(false);
+
+            assert.deepEquals(values, [
+                [
+                    'hi',
+                ],
+                42,
+            ]);
+        });
+    });
+
+    describe('destroy', () => {
+        it('can be called', () => {
+            const client = createTestClient();
+
+            client.set.stringValue('persist after destroy');
+
+            client.destroy();
+            assert.strictEquals(client.get.stringValue(), 'persist after destroy');
+            client.clear();
+            client.destroy();
         });
     });
 
