@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/new-operator-misuse */
+
 import {
     ensureErrorAndPrependMessage,
     mapObject,
@@ -100,8 +102,9 @@ class LocalStorageClientAllValuesEvent extends defineTypedCustomEvent<any>()(
  */
 export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageClientShapes>> {
     /** Internal listen target used for `.listen()`. */
-    private listenTarget: ListenTarget<any> = new ListenTarget<LocalStorageClientAllValuesEvent>();
-    private keyEvents: Record<keyof Shapes, Constructor<CustomEvent>>;
+    protected listenTarget: ListenTarget<any> =
+        new ListenTarget<LocalStorageClientAllValuesEvent>();
+    protected keyEvents: Record<keyof Shapes, Constructor<CustomEvent>>;
 
     /**
      * The type for all values. Cannot be accessed as a value at runtime, only meant to be used as a
@@ -150,7 +153,9 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
                 assertValidShape(
                     newValue,
                     this.shapes[key],
-                    {allowExtraKeys: true},
+                    {
+                        allowExtraKeys: true,
+                    },
                     `LocalStorageClient: Invalid value for key '${String(key)}'.`,
                 );
                 const allValues = this.getAllValues();
@@ -158,10 +163,16 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
 
                 globalThis.localStorage.setItem(this.storeName, JSON.stringify(allValues));
                 this.listenTarget.dispatch(
-                    new LocalStorageClientAllValuesEvent({detail: allValues}),
+                    new LocalStorageClientAllValuesEvent({
+                        detail: allValues,
+                    }),
                 );
-                // eslint-disable-next-line sonarjs/new-operator-misuse
-                this.listenTarget.dispatch(new this.keyEvents[key]({detail: newValue}));
+
+                this.listenTarget.dispatch(
+                    new this.keyEvents[key]({
+                        detail: newValue,
+                    }),
+                );
                 return newValue;
             };
         });
@@ -173,10 +184,16 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
 
                 globalThis.localStorage.setItem(this.storeName, JSON.stringify(allValues));
                 this.listenTarget.dispatch(
-                    new LocalStorageClientAllValuesEvent({detail: allValues}),
+                    new LocalStorageClientAllValuesEvent({
+                        detail: allValues,
+                    }),
                 );
-                // eslint-disable-next-line sonarjs/new-operator-misuse
-                this.listenTarget.dispatch(new this.keyEvents[key]({detail: undefined}));
+
+                this.listenTarget.dispatch(
+                    new this.keyEvents[key]({
+                        detail: undefined,
+                    }),
+                );
             };
         });
     }
@@ -211,8 +228,14 @@ export class LocalStorageClient<const Shapes extends Readonly<BaseLocalStorageCl
                     }
 
                     if (throwErrorOnFailure) {
-                        assertValidShape(value, shapeDefinition, {allowExtraKeys: true});
-                    } else if (!checkValidShape(value, shapeDefinition, {allowExtraKeys: true})) {
+                        assertValidShape(value, shapeDefinition, {
+                            allowExtraKeys: true,
+                        });
+                    } else if (
+                        !checkValidShape(value, shapeDefinition, {
+                            allowExtraKeys: true,
+                        })
+                    ) {
                         return undefined;
                     }
 

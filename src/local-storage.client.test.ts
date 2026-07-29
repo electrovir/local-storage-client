@@ -23,7 +23,9 @@ const testShapes = {
 describe(LocalStorageClient.name, () => {
     function createTestClient() {
         const storeName = `test-store-${randomString(32)}`;
-        const client = new LocalStorageClient(testShapes, {storeName});
+        const client = new LocalStorageClient(testShapes, {
+            storeName,
+        });
         client.clear();
         return client;
     }
@@ -43,7 +45,9 @@ describe(LocalStorageClient.name, () => {
 
         it('uses custom store name when provided', () => {
             const storeName = 'custom-store-name';
-            const client = new LocalStorageClient(testShapes, {storeName});
+            const client = new LocalStorageClient(testShapes, {
+                storeName,
+            });
             assert.strictEquals(client.storeName, storeName);
         });
     });
@@ -76,7 +80,10 @@ describe(LocalStorageClient.name, () => {
         it('stores an object value', () => {
             const client = createTestClient();
 
-            const objectValue = {name: 'John', age: 30};
+            const objectValue = {
+                name: 'John',
+                age: 30,
+            };
             client.set.objectValue(objectValue);
 
             assert.deepEquals(client.get.objectValue(), objectValue);
@@ -98,7 +105,11 @@ describe(LocalStorageClient.name, () => {
         it('stores a nested object value', () => {
             const client = createTestClient();
 
-            const nestedValue = {outer: {inner: 'deep value'}};
+            const nestedValue = {
+                outer: {
+                    inner: 'deep value',
+                },
+            };
             client.set.nestedValue(nestedValue);
 
             assert.deepEquals(client.get.nestedValue(), nestedValue);
@@ -136,15 +147,21 @@ describe(LocalStorageClient.name, () => {
             const client = createTestClient();
 
             assert.throws(() => {
-                // @ts-expect-error intentionally passing wrong type
-                client.set.objectValue({wrongKey: 'value'});
+                client.set.objectValue({
+                    // @ts-expect-error intentionally passing wrong type
+                    wrongKey: 'value',
+                });
             });
         });
 
         it('allows extra keys in objects', () => {
             const client = createTestClient();
 
-            const objectWithExtra = {name: 'John', age: 30, extra: 'allowed'} as {
+            const objectWithExtra = {
+                name: 'John',
+                age: 30,
+                extra: 'allowed',
+            } as {
                 name: string;
                 age: number;
             };
@@ -192,7 +209,10 @@ describe(LocalStorageClient.name, () => {
         it('retrieves a stored object value', () => {
             const client = createTestClient();
 
-            const objectValue = {name: 'Jane', age: 25};
+            const objectValue = {
+                name: 'Jane',
+                age: 25,
+            };
             client.set.objectValue(objectValue);
             const result = client.get.objectValue();
 
@@ -216,7 +236,11 @@ describe(LocalStorageClient.name, () => {
         it('retrieves a stored nested object value', () => {
             const client = createTestClient();
 
-            const nestedValue = {outer: {inner: 'nested content'}};
+            const nestedValue = {
+                outer: {
+                    inner: 'nested content',
+                },
+            };
             client.set.nestedValue(nestedValue);
             const result = client.get.nestedValue();
 
@@ -229,7 +253,9 @@ describe(LocalStorageClient.name, () => {
             // Manually set an invalid value in storage
             globalThis.localStorage.setItem(
                 client.storeName,
-                JSON.stringify({stringValue: 123}), // wrong type
+                JSON.stringify({
+                    stringValue: 123,
+                }), // wrong type
             );
 
             const result = client.get.stringValue();
@@ -344,9 +370,13 @@ describe(LocalStorageClient.name, () => {
 
             assert.throws(
                 () => {
-                    client.getAllValues({throwErrorOnFailure: true});
+                    client.getAllValues({
+                        throwErrorOnFailure: true,
+                    });
                 },
-                {matchMessage: /corrupt/i},
+                {
+                    matchMessage: /corrupt/i,
+                },
             );
         });
 
@@ -362,7 +392,9 @@ describe(LocalStorageClient.name, () => {
             );
 
             assert.throws(() => {
-                client.getAllValues({throwErrorOnFailure: true});
+                client.getAllValues({
+                    throwErrorOnFailure: true,
+                });
             });
         });
 
@@ -373,13 +405,21 @@ describe(LocalStorageClient.name, () => {
             globalThis.localStorage.setItem(
                 client.storeName,
                 JSON.stringify({
-                    objectValue: {name: 'Test', age: 20, extraKey: 'extra'},
+                    objectValue: {
+                        name: 'Test',
+                        age: 20,
+                        extraKey: 'extra',
+                    },
                 }),
             );
 
             const result = client.getAllValues();
 
-            assert.deepEquals(result.objectValue, {name: 'Test', age: 20, extraKey: 'extra'});
+            assert.deepEquals(result.objectValue, {
+                name: 'Test',
+                age: 20,
+                extraKey: 'extra',
+            });
         });
     });
 
@@ -471,7 +511,9 @@ describe(LocalStorageClient.name, () => {
 
         it('same store name shares storage', () => {
             const client1 = createTestClient();
-            const client2 = new LocalStorageClient(testShapes, {storeName: client1.storeName});
+            const client2 = new LocalStorageClient(testShapes, {
+                storeName: client1.storeName,
+            });
 
             client1.set.stringValue('shared value');
 
